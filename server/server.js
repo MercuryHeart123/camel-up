@@ -9,7 +9,7 @@ app.use(cors())
 
 const io = new Server(server, {
     cors: {
-        origin: "http://localhost:3000"
+        origin: "http://77fd-184-82-201-68.ngrok.io"
     }
 })
 
@@ -94,35 +94,38 @@ const initNewGame = (gameInfo) => {
     for (let i = 0; i < 5; i++) {
         rollDice(gameInfo, true)
     }
-    console.log(gameInfo.stackPile);
+
     return gameInfo
 }
-const calculateBet = (gameInfo) => {
+const calculateBet = (gameInfo, camelRanking) => {
     let moneyReturn = {
         ...gameInfo.coins
     }
-    let camelRanking = []
-    for (let i = 0; i < 16; i++) {
-        if (gameInfo.board[i].camels.length == 0) {
-            continue
-        }
-        for (let j = 0; j < gameInfo.board[i].camels.length; j++) {
-            camelRanking.unshift(gameInfo.board[i].camels[j])
-        }
-        if (camelRanking.length === 5) {
-            break
+    if (!camelRanking) {
+        camelRanking = []
+        for (let i = 0; i < 16; i++) {
+            if (gameInfo.board[i].camels.length == 0) {
+                continue
+            }
+            for (let j = 0; j < gameInfo.board[i].camels.length; j++) {
+                camelRanking.unshift(gameInfo.board[i].camels[j])
+            }
+            if (camelRanking.length === 5) {
+                break
+            }
         }
     }
+
     let color = Object.keys(gameInfo.stackPile)
     for (let i = 0; i < color.length; i++) {
         for (let j = 0; j < 3; j++) {
             if (!gameInfo.stackPile[color[i]][j].owner) {
                 continue
             }
-            if (camelRanking[0] === gameInfo.stackPile[color[i]]) {
+            if (camelRanking[0] === color[i]) {
                 moneyReturn[gameInfo.stackPile[color[i]][j].owner] += gameInfo.stackPile[color[i]][j].first
             }
-            else if (camelRanking[1] === gameInfo.stackPile[color[i]]) {
+            else if (camelRanking[1] === color[i]) {
                 moneyReturn[gameInfo.stackPile[color[i]][j].owner] += gameInfo.stackPile[color[i]][j].second
             }
             else {
@@ -131,12 +134,12 @@ const calculateBet = (gameInfo) => {
 
         }
     }
+
     gameInfo.coins = moneyReturn
 
     return gameInfo
 }
 const randomCamel = (gameInfo) => {
-
     let indexCamel = Math.floor(Math.random() * gameInfo.remainCamel.length)
     let movingCamel = gameInfo.remainCamel[indexCamel]
     gameInfo.remainCamel.splice(indexCamel, 1)
@@ -145,35 +148,43 @@ const randomCamel = (gameInfo) => {
         camel: movingCamel,
         step: camelStep
     }
-    if (gameInfo.remainCamel.length == 0) {
-        gameInfo.remainCamel = JSON.parse(JSON.stringify(standardCamel))
+    // if (gameInfo.remainCamel.length == 0) {
+    //     gameInfo.remainCamel = JSON.parse(JSON.stringify(standardCamel))
 
-        for (let i = 0; i < 16; i++) {
-            gameInfo.board[i].trap = {
-                isSet: false,
-                value: 0,
-                owner: null
-            }
-        }
-        gameInfo = calculateBet(gameInfo)
-        let color = Object.keys(gameInfo.stackPile)
+    //     for (let i = 0; i < 16; i++) {
+    //         gameInfo.board[i].trap = {
+    //             isSet: false,
+    //             value: 0,
+    //             owner: null
+    //         }
+    //     }
+    //     gameInfo = calculateBet(gameInfo)
+    //     let color = Object.keys(gameInfo.stackPile)
 
-        for (let i = 0; i < color.length; i++) {
-            for (let j = 0; j < 3; j++) {
-                gameInfo.stackPile[color[i]][j] = {
-                    win: 5 - (j == 0 ? j : j + 1),
-                    lose: 1,
-                    owner: null
-                }
+    //     for (let i = 0; i < color.length; i++) {
+    //         for (let j = 0; j < 3; j++) {
+    //             gameInfo.stackPile[color[i]][j] = {
+    //                 first: 5 - (j == 0 ? j : j + 1),
+    //                 second: 1,
+    //                 lose: 1,
+    //                 owner: null
+    //             }
 
-            }
-        }
-    }
+    //         }
+    //     }
+    // }
     return { gameInfo, movingCamel, camelStep }
 }
 
 const rollDice = (gameInfo, start) => {
+    if (gameInfo.remainCamel.length == 0) {
+        gameInfo.remainCamel = JSON.parse(JSON.stringify(standardCamel))
+
+
+
+    }
     let { movingCamel, camelStep } = randomCamel(gameInfo)
+    console.log('roll dice', movingCamel, camelStep);
     if (start) {
         let presentPosition = gameInfo.camelPosition[movingCamel]
         gameInfo.board[presentPosition + camelStep].camels.push(movingCamel)
@@ -186,24 +197,82 @@ const rollDice = (gameInfo, start) => {
     // let stackLength = gameInfo.board[presentPosition].camels.length
     let landingPosition = presentPosition + camelStep
     if (landingPosition >= 16) { // game set
-        let winnerCamel = tmpArray.pop()
-        return { gameInfo, winnerCamel }
+        let color = Object.keys(gameInfo.stackPile)
+        let camelRanking = []
+        for (let i = 0; i < 16; i++) {
+            if (gameInfo.board[i].camels.length == 0) {
+                continue
+            }
+            for (let j = 0; j < gameInfo.board[i].camels.length; j++) {
+                if (!tmpArray.includes(gameInfo.board[i].camels[j])) {
+                    camelRanking.unshift(gameInfo.board[i].camels[j])
+                }
+                if (camelRanking.length === color.length - tmpArray.length) {
+                    break
+                }
+            }
+
+            if (camelRanking.length === color.length - tmpArray.length) {
+                break
+            }
+            if (camelRanking.length === 5) {
+                break
+            }
+        }
+        for (let i = 0; i < tmpArray.length; i++) {
+            camelRanking.unshift(tmpArray[i])
+        }
+        console.log('calculate bet endgame', camelRanking);
+        calculateBet(gameInfo, camelRanking)
+        return { gameInfo, camelRanking }
     }
     if (gameInfo.board[landingPosition].trap.isSet) {
         let { owner, value } = gameInfo.board[landingPosition].trap
         console.log("trap at", landingPosition, value, movingCamel);
         if (value === 1) {
+            landingPosition++
+            if (landingPosition >= 16) { // game set
+                let color = Object.keys(gameInfo.stackPile)
+                let camelRanking = []
+                for (let i = 0; i < 16; i++) {
+                    if (gameInfo.board[i].camels.length == 0) {
+                        continue
+                    }
+                    for (let j = 0; j < gameInfo.board[i].camels.length; j++) {
+                        if (!tmpArray.includes(gameInfo.board[i].camels[j])) {
+                            camelRanking.unshift(gameInfo.board[i].camels[j])
+                        }
+                        if (camelRanking.length === color.length - tmpArray.length) {
+                            break
+                        }
+                    }
+
+                    if (camelRanking.length === color.length - tmpArray.length) {
+                        break
+                    }
+                    if (camelRanking.length === 5) {
+                        break
+                    }
+                }
+                for (let i = 0; i < tmpArray.length; i++) {
+                    camelRanking.unshift(tmpArray[i])
+                }
+                console.log('calculate bet endgame', camelRanking);
+                calculateBet(gameInfo, camelRanking)
+                return { gameInfo, camelRanking }
+            }
             for (let i = 0; i < tmpArray.length; i++) {
                 let camel = tmpArray[i]
-                gameInfo.board[landingPosition + 1].camels.push(camel)
+                gameInfo.board[landingPosition].camels.push(camel)
                 gameInfo.camelPosition[camel] = presentPosition + camelStep + 1
             }
         }
         else if (value === -1) {
+            landingPosition--
+
             for (let i = tmpArray.length - 1; i >= 0; i--) {
                 let camel = tmpArray[i]
-                console.log(camel, tmpArray);
-                gameInfo.board[landingPosition - 1].camels.unshift(camel)
+                gameInfo.board[landingPosition].camels.unshift(camel)
                 gameInfo.camelPosition[camel] = presentPosition + camelStep - 1
             }
         }
@@ -212,6 +281,7 @@ const rollDice = (gameInfo, start) => {
 
     }
     else {
+
         for (let i = 0; i < tmpArray.length; i++) {
             let camel = tmpArray[i]
             gameInfo.board[landingPosition].camels.push(camel)
@@ -223,7 +293,29 @@ const rollDice = (gameInfo, start) => {
 
         gameInfo.board[presentPosition].camels.pop()
     }
+    if (gameInfo.remainCamel.length === 0) {
+        for (let i = 0; i < 16; i++) {
+            gameInfo.board[i].trap = {
+                isSet: false,
+                value: 0,
+                owner: null
+            }
+        }
+        calculateBet(gameInfo)
+        let color = Object.keys(gameInfo.stackPile)
 
+        for (let i = 0; i < color.length; i++) {
+            for (let j = 0; j < 3; j++) {
+                gameInfo.stackPile[color[i]][j] = {
+                    first: 5 - (j == 0 ? j : j + 1),
+                    second: 1,
+                    lose: 1,
+                    owner: null
+                }
+
+            }
+        }
+    }
 
     return { gameInfo }
 }
@@ -289,7 +381,7 @@ io.on('connection', (socket) => {
         let gameInfo = initNewGame(allGame[roomId])
         allGame[roomId] = gameInfo
         allGame[roomId].nextPlayer = allGame[roomId].players[0]
-        console.log(allGame[roomId]);
+
         io.to(roomId).emit('request_data')
     })
 
@@ -301,25 +393,22 @@ io.on('connection', (socket) => {
     })
 
     socket.on('init_data', (roomId) => {
-
         socket.emit("update_data", allGame[roomId])
 
     })
 
     socket.on('random_camel', (data) => {
         let { roomId, name } = data
-        console.log(data);
         if (name === allGame[roomId].nextPlayer) {
-            let { winnerCamel } = rollDice(allGame[roomId])
-            console.log(allGame[roomId].coins);
+            let { camelRanking } = rollDice(allGame[roomId])
             allGame[roomId].coins[name]++
 
             endTurn(allGame[roomId])
-            if (winnerCamel) {
+            if (camelRanking) {
                 allGame[roomId].isGameStart = false
                 allGame[roomId].gameStatus = {
                     isFinish: true,
-                    winnerCamel
+                    camelRanking
                 }
 
             }
@@ -329,14 +418,14 @@ io.on('connection', (socket) => {
 
     })
     socket.on('place_bet', (data) => {
-        let { camel, tier, roomId, name } = data
+        let { color, tier, roomId, name } = data
         if (name === allGame[roomId].nextPlayer) {
-            if (allGame[roomId].stackPile[camel][tier].owner) {
+            if (allGame[roomId].stackPile[color][tier].owner) {
                 console.log("error", allGame[roomId].stackPile);
                 socket.emit('error', { message: 'another player place this tier' })
                 return
             }
-            allGame[roomId].stackPile[camel][tier].owner = name
+            allGame[roomId].stackPile[color][tier].owner = name
             endTurn(allGame[roomId])
             io.to(roomId).emit('update_data', allGame[roomId])
         }
@@ -347,7 +436,7 @@ io.on('connection', (socket) => {
         console.log('set trap', data);
 
         if (name === allGame[roomId].nextPlayer) {
-            if (allGame[roomId].board[parseInt(position) - 2].trap.isSet || allGame[roomId].board[parseInt(position)].trap.isSet
+            if (allGame[roomId].board[parseInt(position) - 2].trap.isSet || (position == 16 ? false : allGame[roomId].board[parseInt(position)].trap.isSet)
                 || allGame[roomId].board[parseInt(position) - 1].camels.length != 0 || allGame[roomId].board[parseInt(position) - 1].trap.isSet
             ) {
                 console.log("error", allGame[roomId].board);

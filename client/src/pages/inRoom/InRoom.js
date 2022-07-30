@@ -7,7 +7,7 @@ import Board from './board'
 const InRoom = (props) => {
     let { roomId } = useParams()
     let { name } = props
-    const [camel, setCamel] = useState()
+    const [stackPile, setStackPile] = useState()
     const [trapPosition, setTrapPosition] = useState()
     const [trapValue, setTrapValue] = useState()
     const [lastMove, setLastMove] = useState()
@@ -21,7 +21,7 @@ const InRoom = (props) => {
     const [socket, setSocket] = useState(null);
 
     useEffect(() => {
-        const newSocket = io("http://localhost:8080");
+        const newSocket = io("http://5610-184-82-201-68.ngrok.io");
         console.log(newSocket);
         newSocket.on('connect', (socket) => {
             newSocket.emit('join_room', { roomId, name })
@@ -33,12 +33,14 @@ const InRoom = (props) => {
         })
 
         newSocket.on('update_data', (data) => {
-            console.log(data);
-            let { board, coins, players, lastMove, gameStatus, nextPlayer, isGameStart } = data
+            let { board, coins, players, lastMove, gameStatus, nextPlayer, isGameStart, stackPile } = data
             // let board = JSON.parse(data.board)
             // let coins = JSON.parse(data.coins)
             // let players = JSON.parse(data.players)
             // let lastMove = JSON.parse(data.lastMove)
+            console.log(data);
+
+            setStackPile(stackPile)
             setGameStatus(gameStatus)
             setIsGameStart(isGameStart)
             setPlayer(players)
@@ -60,13 +62,45 @@ const InRoom = (props) => {
 
     const initGame = () => {
         socket.emit('init_game', roomId)
+    }
 
+    const placeBet = (color, tier) => {
 
+        socket.emit('place_bet', { color, tier, roomId, name })
     }
 
     const setTrap = () => {
         socket.emit("set_trap", { position: trapPosition, value: trapValue, roomId, name })
     }
+
+    const createBetButton = (color) => {
+        let tier = false
+        if (isGameStart) {
+            tier = !stackPile[color][0].owner ? 0
+                : !stackPile[color][1].owner ? 1
+                    : !stackPile[color][2].owner ? 2
+                        : false
+
+            // console.log(color, tier, stackPile[color][tier].win);
+
+        }
+        return <button
+            disabled={nextPlayer == name && !gameStatus.isFinish && tier !== false ? false : true}
+            onClick={() => { placeBet(color, tier) }}
+        >
+            {tier !== false && stackPile[color][tier].first}
+            {color}
+        </button>
+    }
+
+    const createStackPile = () => {
+        let arr = []
+        for (let color in stackPile) {
+            arr.push(createBetButton(color))
+        }
+        return arr
+    }
+
     if (backToHome) {
         return <Navigate to='/' />
     }
@@ -99,8 +133,8 @@ const InRoom = (props) => {
                 <button disabled={isGameStart ? true : false} onClick={() => { initGame() }}>
                     init game
                 </button>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-
+                {gameStatus && <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    {stackPile && createStackPile()}
                     <button
                         disabled={nextPlayer == name && !gameStatus.isFinish ? false : true}
                         onClick={() => { randomCamel() }}>
@@ -134,7 +168,7 @@ const InRoom = (props) => {
                         set trap!
                     </button>
 
-                </div>
+                </div>}
                 <div>
                     <button onClick={() => { setBackToHome(true) }}>
                         Back
