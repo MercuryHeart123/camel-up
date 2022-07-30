@@ -1,15 +1,20 @@
 const express = require('express')
 const app = express()
-const http = require("http")
+const https = require("https")
 const { Server } = require('socket.io')
 const cors = require('cors')
-const server = http.createServer(app)
+const fs = require('fs')
+const server = https.createServer({
+    key: fs.readFileSync('./cert/key.pem'),
+    cert: fs.readFileSync('./cert/cert.pem')
+
+}, app)
 
 app.use(cors())
 
 const io = new Server(server, {
     cors: {
-        origin: "http://77fd-184-82-201-68.ngrok.io"
+        origin: "https://camel-up.vercel.app/"
     }
 })
 

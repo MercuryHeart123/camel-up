@@ -21,7 +21,7 @@ const InRoom = (props) => {
     const [socket, setSocket] = useState(null);
 
     useEffect(() => {
-        const newSocket = io("http://5610-184-82-201-68.ngrok.io");
+        const newSocket = io("https://42fb-184-82-201-68.ngrok.io");
         console.log(newSocket);
         newSocket.on('connect', (socket) => {
             newSocket.emit('join_room', { roomId, name })
